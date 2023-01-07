@@ -1,0 +1,286 @@
+diff --git a/package/firmware/ipq-wifi/Makefile b/package/firmware/ipq-wifi/Makefile
+index 496d564baf..6351d4faab 100644
+--- a/package/firmware/ipq-wifi/Makefile
++++ b/package/firmware/ipq-wifi/Makefile
+@@ -34,6 +34,7 @@ ALLWIFIBOARDS:= \
+ 	cellc_rtl30vw \
+ 	devolo_magic-2-wifi-next \
+ 	dlink_dap2610 \
++	dlink_dba1210 \
+ 	edgecore_ecw5410 \
+ 	edgecore_oap100 \
+ 	engenius_eap2200 \
+@@ -124,6 +125,7 @@ $(eval $(call generate-ipq-wifi-package,buffalo_wtr-m2133hp,Buffalo WTR-M2133HP)
+ $(eval $(call generate-ipq-wifi-package,cellc_rtl30vw, Cell C RTL30VW))
+ $(eval $(call generate-ipq-wifi-package,devolo_magic-2-wifi-next,devolo Magic 2 WiFi next))
+ $(eval $(call generate-ipq-wifi-package,dlink_dap2610,D-Link DAP-2610))
++$(eval $(call generate-ipq-wifi-package,dlink_dba1210,D-Link DBA-1210))
+ $(eval $(call generate-ipq-wifi-package,edgecore_ecw5410,Edgecore ECW5410))
+ $(eval $(call generate-ipq-wifi-package,edgecore_oap100,Edgecore OAP100))
+ $(eval $(call generate-ipq-wifi-package,engenius_eap2200,EnGenius EAP2200))
+diff --git a/target/linux/ipq40xx/base-files/etc/board.d/02_network b/target/linux/ipq40xx/base-files/etc/board.d/02_network
+index 2aa4886e6a..d01cb4fe9d 100644
+--- a/target/linux/ipq40xx/base-files/etc/board.d/02_network
++++ b/target/linux/ipq40xx/base-files/etc/board.d/02_network
+@@ -26,6 +26,7 @@ ipq40xx_setup_interfaces()
+ 	aruba,ap-365|\
+ 	avm,fritzrepeater-1200|\
+ 	dlink,dap-2610 |\
++	dlink,dba-1210 |\
+ 	engenius,eap1300|\
+ 	engenius,emd1|\
+ 	meraki,mr33|\
+@@ -179,7 +180,8 @@ ipq40xx_setup_macs()
+ 		lan_mac=$(mtd_get_mac_ascii APPSBLENV MacAddress0)
+ 		label_mac=$lan_mac
+ 		;;
+-	dlink,dap-2610)
++	dlink,dap-2610|\
++	dlink,dba-1210)
+ 		lan_mac=$(mtd_get_mac_ascii bdcfg lanmac)
+ 		label_mac=$lan_mac
+ 		;;
+diff --git a/target/linux/ipq40xx/base-files/etc/hotplug.d/firmware/11-ath10k-caldata b/target/linux/ipq40xx/base-files/etc/hotplug.d/firmware/11-ath10k-caldata
+index 8fb9d81d3b..bdca711605 100644
+--- a/target/linux/ipq40xx/base-files/etc/hotplug.d/firmware/11-ath10k-caldata
++++ b/target/linux/ipq40xx/base-files/etc/hotplug.d/firmware/11-ath10k-caldata
+@@ -87,7 +87,8 @@ case "$FIRMWARE" in
+ 		caldata_extract "ART" 0x1000 0x2f20
+ 		ath10k_patch_mac $(mtd_get_mac_ascii APPSBLENV WiFiMacAddress0)
+ 		;;
+-	dlink,dap-2610)
++	dlink,dap-2610 |\
++	dlink,dba-1210)
+ 		caldata_extract "ART" 0x1000 0x2f20
+ 		ath10k_patch_mac $(mtd_get_mac_ascii bdcfg wlanmac)
+ 		;;
+@@ -171,7 +172,8 @@ case "$FIRMWARE" in
+ 		caldata_extract "ART" 0x5000 0x2f20
+ 		ath10k_patch_mac $(mtd_get_mac_ascii APPSBLENV WiFiMacAddress1)
+ 		;;
+-	dlink,dap-2610)
++	dlink,dap-2610 |\
++	dlink,dba-1210)
+ 		caldata_extract "ART" 0x5000 0x2f20
+ 		ath10k_patch_mac $(mtd_get_mac_ascii bdcfg wlanmac_a)
+ 		;;
+diff --git a/target/linux/ipq40xx/config-5.10 b/target/linux/ipq40xx/config-5.10
+index fda14f0131..34b176998d 100644
+--- a/target/linux/ipq40xx/config-5.10
++++ b/target/linux/ipq40xx/config-5.10
+@@ -158,6 +158,7 @@ CONFIG_GENERIC_BUG=y
+ CONFIG_GENERIC_CLOCKEVENTS=y
+ CONFIG_GENERIC_CLOCKEVENTS_BROADCAST=y
+ CONFIG_GENERIC_CPU_AUTOPROBE=y
++CONFIG_GENERIC_CPU_VULNERABILITIES=y
+ CONFIG_GENERIC_EARLY_IOREMAP=y
+ CONFIG_GENERIC_GETTIMEOFDAY=y
+ CONFIG_GENERIC_IDLE_POLL_SETUP=y
+@@ -366,8 +367,8 @@ CONFIG_PINCTRL_MSM=y
+ # CONFIG_PINCTRL_SM8250 is not set
+ CONFIG_PM_OPP=y
+ CONFIG_POWER_RESET=y
+-CONFIG_POWER_RESET_MSM=y
+ CONFIG_POWER_RESET_GPIO_RESTART=y
++CONFIG_POWER_RESET_MSM=y
+ CONFIG_POWER_SUPPLY=y
+ CONFIG_PPS=y
+ CONFIG_PRINTK_TIME=y
+diff --git a/target/linux/ipq40xx/files/arch/arm/boot/dts/qcom-ipq4018-dba-1210.dts b/target/linux/ipq40xx/files/arch/arm/boot/dts/qcom-ipq4018-dba-1210.dts
+index 63808e4788..39d8c6a344 100644
+--- a/target/linux/ipq40xx/files/arch/arm/boot/dts/qcom-ipq4018-dba-1210.dts
++++ b/target/linux/ipq40xx/files/arch/arm/boot/dts/qcom-ipq4018-dba-1210.dts
+@@ -149,27 +149,27 @@
+ 				label = "firmware";
+ 				reg = <0x180000 0x13c0000>;
+ 			};
+-			partition@fb0000 {
++			partition@15b0000 {
+ 				label = "rgbd";
+ 				reg = <0x15b0000 0x10000>;
+ 				read-only;
+ 			};
+-			partition@fc0000 {
++			partition@15c0000 {
+ 				label = "bdcfg";
+ 				reg = <0x15c0000 0x10000>;
+ 				read-only;
+ 			};
+-			partition@fd0000 {
++			partition@15d0000 {
+ 				label = "langpack";
+ 				reg = <0x15d0000 0x20000>;
+ 				read-only;
+ 			};
+-			partition@ff0000 {
++			partition@15f0000 {
+ 				label = "certificate";
+ 				reg = <0x15f0000 0x10000>;
+ 				read-only;
+ 			};
+-			partition@f40000 {
++			partition@1540000 {
+ 				label = "captival";
+ 				reg = <0x1540000 0x70000>;
+ 				read-only;
+@@ -232,10 +232,10 @@
+ 
+ &wifi0 {
+ 	status = "okay";
+-	qcom,ath10k-calibration-variant = "dlink,dap-2610";
++	qcom,ath10k-calibration-variant = "dlink,dba-1210";
+ };
+ 
+ &wifi1 {
+ 	status = "okay";
+-	qcom,ath10k-calibration-variant = "dlink,dap-2610";
++	qcom,ath10k-calibration-variant = "dlink,dba-1210";
+ };
+diff --git a/target/linux/ipq40xx/image/generic.mk b/target/linux/ipq40xx/image/generic.mk
+index cf89409b17..84871c05d4 100644
+--- a/target/linux/ipq40xx/image/generic.mk
++++ b/target/linux/ipq40xx/image/generic.mk
+@@ -416,6 +416,34 @@ define Device/dlink_dap-2610
+ endef
+ TARGET_DEVICES += dlink_dap-2610
+ 
++define Device/dlink_dba-1210
++	$(call Device/FitImageLzma)
++	DEVICE_VENDOR := D-Link
++	DEVICE_MODEL := DBA-1210
++	SOC := qcom-ipq4018
++	DEVICE_DTS_CONFIG := config@ap.dk01.1-c1
++	BLOCKSIZE := 64k
++	PAGESIZE := 1024
++	WRGG_DEVNAME := /dev/mtdblock/8
++	WRGG_SIGNATURE := wapac30_dkbs_dba1210
++	IMAGE_SIZE := 14080k
++	IMAGES += factory.bin
++	# Bootloader expects a special 160 byte header which is added by
++	# wrgg-image.
++	# Factory image size must be larger than 6MB, and size in wrgg header must
++	# match actual factory image size to be flashable from D-Link http server.
++	# Bootloader verifies checksum of wrgg image before booting, thus jffs2
++	# cannot be part of the wrgg image. This is solved in the factory image by
++	# having the rootfs at the end of the image (without pad-rootfs). And in
++	# the sysupgrade image only the kernel is included in the wrgg checksum,
++	# but this is not flashable from the D-link http server.
++	# append-rootfs must start on an erase block boundary.
++	# IMAGE/factory.bin    := append-kernel | pad-offset 6144k 160 | append-rootfs | wrgg-image | check-size
++	IMAGE/sysupgrade.bin := append-kernel | wrgg-image | pad-to $$$$(BLOCKSIZE) | append-rootfs | pad-rootfs | check-size | append-metadata
++	DEVICE_PACKAGES := ipq-wifi-dlink_dba1210
++endef
++TARGET_DEVICES += dlink_dba-1210
++
+ define Device/edgecore_ecw5211
+ 	$(call Device/FitImage)
+ 	$(call Device/UbiFit)
+diff --git a/target/linux/ipq40xx/patches-5.10/901-arm-boot-add-dts-files.patch b/target/linux/ipq40xx/patches-5.10/901-arm-boot-add-dts-files.patch
+index 4fc0566c73..dc286e4bac 100644
+--- a/target/linux/ipq40xx/patches-5.10/901-arm-boot-add-dts-files.patch
++++ b/target/linux/ipq40xx/patches-5.10/901-arm-boot-add-dts-files.patch
+@@ -10,13 +10,14 @@ Signed-off-by: John Crispin <john@phrozen.org>
+ 
+ --- a/arch/arm/boot/dts/Makefile
+ +++ b/arch/arm/boot/dts/Makefile
+-@@ -904,11 +904,75 @@ dtb-$(CONFIG_ARCH_QCOM) += \
++@@ -904,11 +904,76 @@ dtb-$(CONFIG_ARCH_QCOM) += \
+  	qcom-apq8074-dragonboard.dtb \
+  	qcom-apq8084-ifc6540.dtb \
+  	qcom-apq8084-mtp.dtb \
+ +	qcom-ipq4018-a42.dtb \
+ +	qcom-ipq4018-ap120c-ac.dtb \
+ +	qcom-ipq4018-dap-2610.dtb \
+++	qcom-ipq4018-dba-1210.dtb \
+ +	qcom-ipq4018-cs-w3-wd1200g-eup.dtb \
+ +	qcom-ipq4018-magic-2-wifi-next.dtb \
+ +	qcom-ipq4018-ea6350v3.dtb \
+diff --git a/target/linux/ramips/mt7621/config-5.10 b/target/linux/ramips/mt7621/config-5.10
+index dd23f13bc6..a4a169e28c 100644
+--- a/target/linux/ramips/mt7621/config-5.10
++++ b/target/linux/ramips/mt7621/config-5.10
+@@ -25,7 +25,6 @@ CONFIG_CPU_HAS_PREFETCH=y
+ CONFIG_CPU_HAS_RIXI=y
+ CONFIG_CPU_HAS_SYNC=y
+ CONFIG_CPU_IDLE=y
+-# CONFIG_CPU_IDLE_GOV_LADDER is not set
+ CONFIG_CPU_IDLE_GOV_TEO=y
+ CONFIG_CPU_MIPS32=y
+ # CONFIG_CPU_MIPS32_R1 is not set
+@@ -41,7 +40,6 @@ CONFIG_CPU_SUPPORTS_32BIT_KERNEL=y
+ CONFIG_CPU_SUPPORTS_HIGHMEM=y
+ CONFIG_CPU_SUPPORTS_MSA=y
+ CONFIG_CRC16=y
+-CONFIG_CRYPTO_ACOMP2=y
+ CONFIG_CRYPTO_BLAKE2S=y
+ CONFIG_CRYPTO_DEFLATE=y
+ CONFIG_CRYPTO_HASH_INFO=y
+@@ -49,6 +47,7 @@ CONFIG_CRYPTO_LIB_BLAKE2S_GENERIC=y
+ CONFIG_CRYPTO_LIB_POLY1305_RSIZE=2
+ CONFIG_CRYPTO_LZO=y
+ CONFIG_CRYPTO_RNG2=y
++CONFIG_CRYPTO_ZSTD=y
+ CONFIG_CSRC_R4K=y
+ CONFIG_DEBUG_PINCTRL=y
+ CONFIG_DIMLIB=y
+@@ -97,6 +96,7 @@ CONFIG_HAS_IOMEM=y
+ CONFIG_HAS_IOPORT_MAP=y
+ CONFIG_HIGHMEM=y
+ CONFIG_I2C=y
++CONFIG_I2C_ALGOBIT=y
+ CONFIG_I2C_BOARDINFO=y
+ CONFIG_I2C_CHARDEV=y
+ CONFIG_I2C_GPIO=y
+@@ -109,15 +109,15 @@ CONFIG_IRQ_DOMAIN_HIERARCHY=y
+ CONFIG_IRQ_FORCED_THREADING=y
+ CONFIG_IRQ_MIPS_CPU=y
+ CONFIG_IRQ_WORK=y
+-# CONFIG_KERNEL_ZSTD is not set
+-CONFIG_LED_TRIGGER_PHY=y
+ CONFIG_LEDS_UBNT_LEDBAR=y
++CONFIG_LED_TRIGGER_PHY=y
+ CONFIG_LIBFDT=y
+ CONFIG_LOCK_DEBUGGING_SUPPORT=y
+ CONFIG_LZO_COMPRESS=y
+ CONFIG_LZO_DECOMPRESS=y
+ CONFIG_MDIO_BUS=y
+ CONFIG_MDIO_DEVICE=y
++CONFIG_MDIO_DEVRES=y
+ CONFIG_MEDIATEK_GE_PHY=y
+ CONFIG_MEMFD_CREATE=y
+ CONFIG_MFD_SYSCON=y
+@@ -127,7 +127,6 @@ CONFIG_MIKROTIK_RB_SYSFS=y
+ CONFIG_MIPS=y
+ CONFIG_MIPS_ASID_BITS=8
+ CONFIG_MIPS_ASID_SHIFT=0
+-CONFIG_MIPS_CBPF_JIT=y
+ CONFIG_MIPS_CLOCK_VSYSCALL=y
+ CONFIG_MIPS_CM=y
+ # CONFIG_MIPS_CMDLINE_BUILTIN_EXTEND is not set
+@@ -140,6 +139,7 @@ CONFIG_MIPS_CPS_CPUIDLE=y
+ # CONFIG_MIPS_CPS_NS16550_BOOL is not set
+ CONFIG_MIPS_CPS_PM=y
+ CONFIG_MIPS_CPU_SCACHE=y
++CONFIG_MIPS_EBPF_JIT=y
+ # CONFIG_MIPS_ELF_APPENDED_DTB is not set
+ CONFIG_MIPS_GIC=y
+ CONFIG_MIPS_L1_CACHE_SHIFT=5
+@@ -228,6 +228,7 @@ CONFIG_RALINK=y
+ # CONFIG_RALINK_WDT is not set
+ CONFIG_RATIONAL=y
+ CONFIG_REGMAP=y
++CONFIG_REGMAP_I2C=y
+ CONFIG_REGMAP_MMIO=y
+ CONFIG_REGULATOR=y
+ CONFIG_REGULATOR_FIXED_VOLTAGE=y
+@@ -287,7 +288,9 @@ CONFIG_USB_SUPPORT=y
+ CONFIG_USE_OF=y
+ CONFIG_WATCHDOG_CORE=y
+ CONFIG_WEAK_ORDERING=y
+-CONFIG_WEAK_REORDERING_BEYOND_LLSC=y
+ CONFIG_XPS=y
++CONFIG_XXHASH=y
+ CONFIG_ZLIB_DEFLATE=y
+ CONFIG_ZLIB_INFLATE=y
++CONFIG_ZSTD_COMPRESS=y
++CONFIG_ZSTD_DECOMPRESS=y
